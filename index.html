@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QualiCotty - Untitled project</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="shortcut icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ribbon">
+        <span class="app-brand" id="appBrand" title="Right-click for About">
+            <img class="app-favicon" src="favicon.png" alt="" width="28" height="28" />
+            <span class="app-title">QualiCotty</span>
+            <span class="app-version">0.01a</span>
+        </span>
+        <span class="ribbon-label">Project:</span>
+        <button type="button" id="projectNameBtn" class="project-name-btn" title="Project properties">Untitled project</button>
+
+        <div class="mode-toggle" role="group" aria-label="Mode">
+            <button type="button" id="modeCode" class="mode-button active">Code</button>
+            <button type="button" id="modeAnalyze" class="mode-button">Analyze</button>
+        </div>
+
+        <div class="nav-toggle" role="group" aria-label="View navigation">
+            <button type="button" id="navBack" class="nav-button" title="View backward (Ctrl+Alt+Z)">wb</button>
+            <button type="button" id="navForward" class="nav-button" title="View forward (Ctrl+Alt+Y)">wf</button>
+        </div>
+
+        <div class="font-controls">
+            <input type="text" id="fontSizeBox" class="font-size-box" value="11 pt" title="Font size (pt)" />
+            <button type="button" id="fontDec" class="font-step" title="Decrease font size">A-</button>
+            <button type="button" id="fontInc" class="font-step" title="Increase font size">A+</button>
+            <select id="fontSelector" class="font-selector" title="Font family">
+                <option value="georgia">Georgia</option>
+                <option value="times">Times New Roman</option>
+                <option value="garamond">Garamond</option>
+                <option value="arial">Arial</option>
+                <option value="helvetica">Helvetica</option>
+                <option value="verdana">Verdana</option>
+            </select>
+            <div class="align-toggle" role="group" aria-label="Text alignment">
+                <button type="button" id="alignLeft" class="align-btn active" data-align="left" title="Align left">
+                    <span class="align-icon align-icon-left" aria-hidden="true"></span>
+                </button>
+                <button type="button" id="alignJustifyLeft" class="align-btn" data-align="justify-left" title="Justify left">
+                    <span class="align-icon align-icon-justify-left" aria-hidden="true"></span>
+                </button>
+                <button type="button" id="alignJustifyRight" class="align-btn" data-align="justify-right" title="Justify right">
+                    <span class="align-icon align-icon-justify-right" aria-hidden="true"></span>
+                </button>
+                <button type="button" id="alignRight" class="align-btn" data-align="right" title="Align right">
+                    <span class="align-icon align-icon-right" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <aside class="left-column">
+            <div class="panel-title">Documents</div>
+            <ul id="documentList" class="document-list"></ul>
+            <div class="panel-title preview-title">Preview</div>
+            <div id="previewArea" class="preview-area">
+                <span class="placeholder">Preview will appear here.</span>
+            </div>
+        </aside>
+
+        <main class="center-column">
+            <div id="documentView" class="document-view" tabindex="0">
+                <div class="empty-state">
+                    <p>No document loaded.</p>
+                    <p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin.</p>
+                </div>
+            </div>
+        </main>
+
+        <aside class="right-bar">
+            <div class="panel-title" id="rightPanelTitle">Codes</div>
+            <div id="tagBar" class="tag-bar"></div>
+        </aside>
+    </div>
+
+    <div id="dropOverlay" class="drop-overlay">
+        <div class="drop-overlay-inner">Drop .txt, .html, or .vtt files to import</div>
+    </div>
+
+    <div id="segmentModal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-label="Segment properties">
+            <div class="modal-header">
+                <span>Segment properties</span>
+                <button type="button" id="segmentModalClose" class="modal-close" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-field-label">Text</div>
+                <div id="segmentSnippet" class="segment-snippet"></div>
+                <div class="modal-field-label">Codes</div>
+                <div id="segmentTags" class="segment-tags"></div>
+                <div class="modal-field-label">Comment</div>
+                <textarea id="segmentComment" class="segment-comment" placeholder="Add a comment for this segment..."></textarea>
+                <div class="modal-actions">
+                    <button type="button" id="segmentDeleteBtn" class="modal-danger-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="documentModal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-label="Document properties">
+            <div class="modal-header">
+                <span>Document properties</span>
+                <button type="button" id="documentModalClose" class="modal-close" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-field-label" for="documentPropName">Name</label>
+                <input type="text" id="documentPropName" class="modal-text-input" placeholder="Document name" autocomplete="off" />
+                <label class="modal-field-label" for="documentPropDescription">Description</label>
+                <textarea id="documentPropDescription" class="segment-comment" placeholder="Add a description for this document..."></textarea>
+                <label class="modal-field-label" for="documentPropColour">Colour</label>
+                <div class="document-colour-row">
+                    <input type="color" id="documentPropColour" class="codebook-colour" title="Document colour" value="#4a90e2" />
+                    <span id="documentPropColourPreview" class="codebook-colour-preview" title="Colourblind display" hidden></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="projectModal" class="modal-overlay">
+        <div class="modal" role="dialog" aria-label="Project properties">
+            <div class="modal-header">
+                <span>Project properties</span>
+                <button type="button" id="projectModalClose" class="modal-close" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-field-label">Project name</div>
+                <input type="text" id="projectPropName" class="modal-text-input" placeholder="Untitled project" />
+                <div class="modal-field-label">Description</div>
+                <textarea id="projectPropDescription" class="segment-comment" placeholder="Describe this project..."></textarea>
+                <div class="modal-field-label">User name</div>
+                <input type="text" id="projectPropUser" class="modal-text-input" placeholder="Your name" />
+                <div class="modal-actions">
+                    <button type="button" id="projectSaveBtn" class="modal-primary-btn">Save</button>
+                    <button type="button" id="projectLoadBtn" class="modal-secondary-btn">Load</button>
+                    <button type="button" id="projectNewBtn" class="modal-danger-btn">New / Delete</button>
+                </div>
+                <input type="file" id="projectLoadInput" accept=".cotty,application/json" hidden />
+            </div>
+        </div>
+    </div>
+
+    <div id="codebookModal" class="modal-overlay">
+        <div class="modal modal-wide" role="dialog" aria-label="Codebook">
+            <div class="modal-header">
+                <span>Codebook</span>
+                <button type="button" id="codebookModalClose" class="modal-close" title="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-field-label" for="codebookPropName">Codebook name</label>
+                <input type="text" id="codebookPropName" class="modal-text-input" placeholder="Untitled codebook" autocomplete="off">
+                <label class="modal-field-label" for="codebookPropDescription">Description</label>
+                <textarea id="codebookPropDescription" class="segment-comment" placeholder="Describe this codebook..."></textarea>
+                <div class="modal-field-label codebook-codes-heading">Codes</div>
+                <div id="codebookList" class="codebook-list"></div>
+                <div class="modal-actions codebook-file-actions">
+                    <label class="codebook-cb-toggle" for="codebookColourblindToggle"
+                        data-tooltip="Sorry — this colourblind mode is still a rough draft. For now it is only an emergency tool to improve accessibility by swapping the colours you see on screen for alternatives that should be easier to tell apart. Saved colours are unchanged. If you have ideas on how to improve it, please contact us.">
+                        <input type="checkbox" id="codebookColourblindToggle">
+                        <span>Colourblind mode</span>
+                    </label>
+                    <button type="button" id="codebookImportBtn" class="modal-secondary-btn">Import codebook</button>
+                    <button type="button" id="codebookExportBtn" class="modal-primary-btn">Export codebook</button>
+                </div>
+                <input type="file" id="codebookImportInput" accept=".cottybook,application/json" hidden>
+            </div>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="modal-overlay">
+        <div class="modal modal-about" role="dialog" aria-label="QualiCotty 0.01a">
+            <div class="modal-header">
+                <span>QualiCotty 0.01a</span>
+                <button type="button" id="aboutModalClose" class="modal-close" title="Close">&times;</button>
+            </div>
+            <div class="modal-body about-body">
+                <p>
+                    QualiCotty is a lightweight qualitative content analysis tool that runs entirely
+                    in your browser. Drop <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> documents, build a codebook, highlight
+                    passages with codes, and explore them in Analyze mode.
+                </p>
+                <p class="about-guide-title">Quick guide</p>
+                <ul class="about-guide">
+                    <li>Import <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files by drag and drop. The document list shows about 10 at a time and scrolls if you have more.</li>
+                    <li>In <strong>Code</strong> mode, select text and press Enter to apply the active code, or press 1–9 / 0 for the first ten codes.</li>
+                    <li>Use the right column to choose codes, or open <strong>Codebook</strong> to edit them.</li>
+                    <li>In <strong>Analyze</strong> mode, filter with and/or, isolate segments, or merge across documents.</li>
+                    <li>Open the project name to save or load a <strong>.cotty</strong> file.</li>
+                    <li>wb / wf step through recent views, or Ctrl+Alt+Z and Ctrl+Alt+Y.</li>
+                </ul>
+                <p class="about-credits-title">Credits</p>
+                <p class="about-credits">
+                    Giulia Arena<br>
+                    <a href="mailto:giulia.arena@edu.unige.it">giulia.arena@edu.unige.it</a>
+                </p>
+                <p class="about-credits">
+                    Giulio Lucio Sergio Sacco<br>
+                    <a href="mailto:giulioluciosergio.sacco@edu.unige.it">giulioluciosergio.sacco@edu.unige.it</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/palette.js"></script>
+    <script src="js/save.js"></script>
+    <script src="js/segments.js"></script>
+    <script src="js/import/txt.js"></script>
+    <script src="js/import/html.js"></script>
+    <script src="js/import/vtt.js"></script>
+    <script src="js/import/index.js"></script>
+    <script src="js/documents.js"></script>
+    <script src="js/codebook.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/gui.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>
