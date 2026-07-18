@@ -149,8 +149,8 @@
 
             if (segs.length === 0) return [];
 
-            if (tags.length === 0) {
-                return segs
+            function segmentsToUnits(list) {
+                return list
                     .slice()
                     .sort((a, b) => a.coordinates.start - b.coordinates.start)
                     .map(s => ({
@@ -161,7 +161,53 @@
                     .filter(u => u.end > u.start);
             }
 
-            if (state.analyzeQueryMode) return [];
+            function unitContainsText(unit, needle) {
+                const n = String(needle || '').trim().toLowerCase();
+                if (!n) return true;
+                const slice = doc.text.slice(unit.start, unit.end).toLowerCase();
+                return slice.indexOf(n) !== -1;
+            }
+
+            function applyTextFilter(units) {
+                const needle = typeof state.analyzeTextFilter === 'string'
+                    ? state.analyzeTextFilter
+                    : '';
+                if (!String(needle).trim()) return units;
+                return units.filter(u => unitContainsText(u, needle));
+            }
+
+            // Custom `|` query: whole-segment boolean filter.
+            if (state.analyzeQueryMode) {
+                const Q = global.QualiCottyAnalyzeQuery;
+                const raw = typeof state.analyzeQuery === 'string' ? state.analyzeQuery : '';
+                if (!Q || typeof Q.compile !== 'function') return [];
+
+                const knownNames = (state.codebook && state.codebook.codes || []).map(c => c.name);
+                const compiled = Q.compile(raw, { knownCodeNames: knownNames });
+                state.analyzeQueryError = compiled.ok ? '' : (compiled.error || 'Invalid query.');
+                if (!compiled.ok || compiled.empty || !compiled.ast) return [];
+
+                const matched = segs.filter(s => {
+                    const codeNames = (s.codes || []).map(ts => {
+                        const code = getCodeByTimestamp(ts);
+                        return code ? code.name : '';
+                    }).filter(Boolean);
+                    const slice = doc.text.slice(
+                        clamp(s.coordinates.start, 0, textLen),
+                        clamp(s.coordinates.end, 0, textLen)
+                    );
+                    return Q.evaluate(compiled.ast, {
+                        codeNames: codeNames,
+                        text: slice,
+                        docName: doc.name || ''
+                    });
+                });
+                return segmentsToUnits(matched);
+            }
+
+            if (tags.length === 0) {
+                return applyTextFilter(segmentsToUnits(segs));
+            }
 
             const relevant = segs.filter(s =>
                 (s.codes || []).some(c => tags.indexOf(c) !== -1)
@@ -225,7 +271,7 @@
                 }
             });
 
-            return units;
+            return applyTextFilter(units);
         }
 
         function paintDisplayUnit(frag, doc, unit) {

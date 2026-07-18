@@ -217,6 +217,61 @@
             });
         }
 
+        function applyImportedCodebook(parsed) {
+            if (!parsed) return { added: 0, skipped: 0 };
+            const state = getState();
+            const els = getEls();
+
+            if (els.codebookPropName && els.codebookModal &&
+                els.codebookModal.classList.contains('visible')) {
+                applyMetaFromInputs();
+            }
+
+            if (parsed.name) {
+                state.codebook.name = parsed.name;
+                if (els.codebookPropName) els.codebookPropName.value = state.codebook.name;
+            }
+            if (typeof parsed.description === 'string') {
+                state.codebook.description = parsed.description;
+                if (els.codebookPropDescription) {
+                    els.codebookPropDescription.value = state.codebook.description;
+                }
+            }
+
+            const existingTs = new Set(state.codebook.codes.map(c => c.timestamp));
+            const existingNames = new Set(
+                state.codebook.codes.map(c => String(c.name).toLowerCase())
+            );
+            let added = 0;
+            let skipped = 0;
+
+            parsed.codes.forEach(incoming => {
+                if (existingTs.has(incoming.timestamp)) {
+                    skipped += 1;
+                    return;
+                }
+                const name = uniqueImportedName(incoming.name, existingNames);
+                existingNames.add(name.toLowerCase());
+                existingTs.add(incoming.timestamp);
+                state.codebook.codes.push({
+                    timestamp: incoming.timestamp,
+                    name: name,
+                    colour: incoming.colour
+                        ? normalizeHex(incoming.colour)
+                        : defaultColour(),
+                    description: incoming.description || DEFAULT_DESCRIPTION
+                });
+                added += 1;
+            });
+
+            saveState();
+            if (onCodesChanged) onCodesChanged();
+            if (els.codebookModal && els.codebookModal.classList.contains('visible')) {
+                renderCodebookList();
+            }
+            return { added: added, skipped: skipped };
+        }
+
         function importCodebook() {
             const els = getEls();
             const SaveApi = global.QualiCottySave;
@@ -227,51 +282,14 @@
             SaveApi.pickAndLoadCottybookFile(els.codebookImportInput)
                 .then(parsed => {
                     if (!parsed) return;
-                    const state = getState();
-                    applyMetaFromInputs();
-
-                    if (parsed.name) {
-                        state.codebook.name = parsed.name;
-                        els.codebookPropName.value = state.codebook.name;
-                    }
-                    if (typeof parsed.description === 'string') {
-                        state.codebook.description = parsed.description;
-                        els.codebookPropDescription.value = state.codebook.description;
-                    }
-
-                    const existingTs = new Set(state.codebook.codes.map(c => c.timestamp));
-                    const existingNames = new Set(
-                        state.codebook.codes.map(c => String(c.name).toLowerCase())
-                    );
-                    let added = 0;
-                    let skipped = 0;
-
-                    parsed.codes.forEach(incoming => {
-                        if (existingTs.has(incoming.timestamp)) {
-                            skipped += 1;
-                            return;
-                        }
-                        const name = uniqueImportedName(incoming.name, existingNames);
-                        existingNames.add(name.toLowerCase());
-                        existingTs.add(incoming.timestamp);
-                        state.codebook.codes.push({
-                            timestamp: incoming.timestamp,
-                            name: name,
-                            colour: incoming.colour
-                                ? normalizeHex(incoming.colour)
-                                : defaultColour(),
-                            description: incoming.description || DEFAULT_DESCRIPTION
-                        });
-                        added += 1;
-                    });
-
-                    saveState();
-                    if (onCodesChanged) onCodesChanged();
-                    renderCodebookList();
-
+                    const result = applyImportedCodebook(parsed);
                     const parts = [];
-                    if (added) parts.push(added + ' code' + (added === 1 ? '' : 's') + ' added');
-                    if (skipped) parts.push(skipped + ' skipped (already present)');
+                    if (result.added) {
+                        parts.push(result.added + ' code' + (result.added === 1 ? '' : 's') + ' added');
+                    }
+                    if (result.skipped) {
+                        parts.push(result.skipped + ' skipped (already present)');
+                    }
                     if (parts.length === 0) {
                         alert('Codebook metadata updated; no new codes to import.');
                     } else {
@@ -281,6 +299,17 @@
                 .catch(err => {
                     alert('Could not import codebook: ' + (err && err.message ? err.message : err));
                 });
+        }
+
+        function importCodebookFromFile(file) {
+            const SaveApi = global.QualiCottySave;
+            if (!SaveApi || typeof SaveApi.readCottybookFile !== 'function') {
+                return Promise.reject(new Error('Save module is not available.'));
+            }
+            return SaveApi.readCottybookFile(file).then(parsed => {
+                const result = applyImportedCodebook(parsed);
+                return result;
+            });
         }
 
         function buildInlineDeletePanel(code) {
@@ -544,7 +573,9 @@
             deleteCode: deleteCode,
             moveCode: moveCode,
             exportCodebook: exportCodebook,
-            importCodebook: importCodebook
+            importCodebook: importCodebook,
+            importCodebookFromFile: importCodebookFromFile,
+            applyImportedCodebook: applyImportedCodebook
         };
     }
 

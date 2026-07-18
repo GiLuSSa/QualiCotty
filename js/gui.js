@@ -484,7 +484,7 @@
             queryBtn.type = 'button';
             queryBtn.className = 'mode-button analyze-logic-btn';
             queryBtn.textContent = '|';
-            queryBtn.title = 'Custom query';
+            queryBtn.title = 'Custom query (code:/text:/doc:/indoc:)';
             if (state.analyzeQueryMode) queryBtn.classList.add('active');
             queryBtn.addEventListener('click', () => {
                 state.analyzeQueryMode = !state.analyzeQueryMode;
@@ -535,10 +535,80 @@
             const queryBox = document.createElement('textarea');
             queryBox.id = 'analyzeQueryBox';
             queryBox.className = 'analyze-query-box';
-            queryBox.placeholder = 'Custom search (coming soon)…';
-            queryBox.disabled = !state.analyzeQueryMode;
-            if (!state.analyzeQueryMode) queryBox.classList.add('inactive');
+            if (state.analyzeQueryMode) {
+                queryBox.placeholder = 'code:"Code 1" and text:"cat"';
+                queryBox.title =
+                    'Query syntax:\n' +
+                    '  code:"Name"   code:("A" and "B")   code:("A" or "B" and not "C")\n' +
+                    '  text:"cat"    text:("cat" and "dog")\n' +
+                    '  doc:"Smith"\n' +
+                    '  indoc:"Smith"\n' +
+                    '  indoc:("doc1", "doc2", not "doc3")\n' +
+                    '  and / or / not / ( )\n' +
+                    'Bare "Name" is shorthand for code:"Name".';
+                queryBox.value = typeof state.analyzeQuery === 'string' ? state.analyzeQuery : '';
+            } else {
+                queryBox.placeholder = 'Filter by text in segments…';
+                queryBox.title =
+                    'Plain text filter (and/or mode).\n' +
+                    'Keeps only passages that contain this text (case-insensitive),\n' +
+                    'combined with the selected codes via and/or.\n' +
+                    'Remembered when switching between and and or; separate from | query.';
+                queryBox.value = typeof state.analyzeTextFilter === 'string'
+                    ? state.analyzeTextFilter
+                    : '';
+            }
+            queryBox.addEventListener('input', () => {
+                if (state.analyzeQueryMode) {
+                    state.analyzeQuery = queryBox.value;
+                    const Q = global.QualiCottyAnalyzeQuery;
+                    if (Q && typeof Q.compile === 'function') {
+                        const knownNames = state.codebook.codes.map(c => c.name);
+                        const compiled = Q.compile(state.analyzeQuery || '', { knownCodeNames: knownNames });
+                        state.analyzeQueryError = compiled.ok ? '' : (compiled.error || 'Invalid query.');
+                    }
+                } else {
+                    state.analyzeTextFilter = queryBox.value;
+                    state.analyzeQueryError = '';
+                }
+                Docs.renderDocumentView();
+                if (Seg) Seg.updateAnalyzeStats();
+                const errEl = document.getElementById('analyzeQueryError');
+                if (errEl) {
+                    const msg = state.analyzeQueryMode ? (state.analyzeQueryError || '') : '';
+                    errEl.textContent = msg;
+                    errEl.hidden = !msg;
+                }
+            });
             els.tagBar.appendChild(queryBox);
+
+            const queryErr = document.createElement('div');
+            queryErr.id = 'analyzeQueryError';
+            queryErr.className = 'analyze-query-error';
+            if (state.analyzeQueryMode && state.analyzeQueryError) {
+                queryErr.textContent = state.analyzeQueryError;
+            } else {
+                queryErr.hidden = true;
+            }
+            els.tagBar.appendChild(queryErr);
+
+            // Refresh error from a compile pass when entering/staying in query mode.
+            if (state.analyzeQueryMode && Seg) {
+                // Force error field via a dry compile for empty/invalid without needing a doc.
+                const Q = global.QualiCottyAnalyzeQuery;
+                if (Q && typeof Q.compile === 'function') {
+                    const knownNames = state.codebook.codes.map(c => c.name);
+                    const compiled = Q.compile(state.analyzeQuery || '', { knownCodeNames: knownNames });
+                    state.analyzeQueryError = compiled.ok ? '' : (compiled.error || 'Invalid query.');
+                    if (state.analyzeQueryError) {
+                        queryErr.textContent = state.analyzeQueryError;
+                        queryErr.hidden = false;
+                    } else {
+                        queryErr.textContent = '';
+                        queryErr.hidden = true;
+                    }
+                }
+            }
 
             const stats = document.createElement('div');
             stats.id = 'analyzeStats';
@@ -685,6 +755,9 @@
             state.analyzeLogic = 'and';
             state.analyzeFilterTags = new Set();
             state.analyzeQueryMode = false;
+            state.analyzeQueryError = '';
+            state.analyzeTextFilter = '';
+            state.analyzeQuery = '';
             state.activeCodeTimestamp = (state.codebook.codes[0] && state.codebook.codes[0].timestamp) || null;
             state.activeDocumentTimestamp = state.documents.length
                 ? state.documents[0].timestamp
@@ -765,7 +838,16 @@
 
         function setupAboutModal() {
             const els = getEls();
-            if (!els.appBrand || !els.aboutModal) return;
+            if (!els.aboutModal) return;
+
+            const ver = qualicottyVersion || global.QualiCottyVersion || '';
+            if (els.appVersion) els.appVersion.textContent = ver;
+            if (els.aboutModalTitle) {
+                els.aboutModalTitle.textContent = 'QualiCotty ' + ver;
+            }
+            if (els.aboutModal.setAttribute) {
+                els.aboutModal.setAttribute('aria-label', 'QualiCotty ' + ver);
+            }
 
             function openAboutModal() {
                 els.aboutModal.classList.add('visible');
@@ -775,10 +857,29 @@
                 els.aboutModal.classList.remove('visible');
             }
 
-            els.appBrand.addEventListener('contextmenu', e => {
-                e.preventDefault();
-                openAboutModal();
-            });
+            if (els.appBrandInfo) {
+                els.appBrandInfo.addEventListener('click', openAboutModal);
+                els.appBrandInfo.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openAboutModal();
+                    }
+                });
+            }
+
+            if (els.appFavicon) {
+                els.appFavicon.addEventListener('click', e => {
+                    e.stopPropagation();
+                    els.appFavicon.classList.remove('pet');
+                    // Retrigger animation if clicked again quickly.
+                    void els.appFavicon.offsetWidth;
+                    els.appFavicon.classList.add('pet');
+                });
+                els.appFavicon.addEventListener('animationend', () => {
+                    els.appFavicon.classList.remove('pet');
+                });
+            }
+
             els.aboutModalClose.addEventListener('click', closeAboutModal);
             els.aboutModal.addEventListener('click', e => {
                 if (e.target === els.aboutModal) closeAboutModal();
@@ -810,9 +911,79 @@
 
         /* ---- Drag & drop / keyboard ---- */
 
+        function handleDroppedFiles(fileList) {
+            const files = Array.from(fileList || []);
+            if (files.length === 0) return;
+
+            const cottyFiles = files.filter(f => /\.cotty$/i.test(f.name));
+            const cottybookFiles = files.filter(f => /\.cottybook$/i.test(f.name));
+            const Docs = getDocs();
+            const Cbk = getCbk();
+
+            // A .cotty replaces the whole project — take the first one only.
+            if (cottyFiles.length > 0) {
+                if (!confirm('Loading a .cotty file will replace your current project. Continue?')) {
+                    return;
+                }
+                if (!global.QualiCottySave || typeof global.QualiCottySave.readCottyFile !== 'function') {
+                    alert('Save module is not available.');
+                    return;
+                }
+                global.QualiCottySave.readCottyFile(cottyFiles[0])
+                    .then(snapshot => {
+                        if (!snapshot) return;
+                        applyLoadedProject(snapshot);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Could not load .cotty file: ' + (err && err.message ? err.message : err));
+                    });
+                return;
+            }
+
+            const docFiles = files.filter(f =>
+                !/\.cotty$/i.test(f.name) && !/\.cottybook$/i.test(f.name)
+            );
+
+            const bookPromise = cottybookFiles.length === 0
+                ? Promise.resolve(null)
+                : (Cbk && typeof Cbk.importCodebookFromFile === 'function'
+                    ? Promise.all(cottybookFiles.map(f =>
+                        Cbk.importCodebookFromFile(f).catch(err => {
+                            console.error(err);
+                            alert('Could not import codebook “' + f.name + '”: ' +
+                                (err && err.message ? err.message : err));
+                            return { added: 0, skipped: 0 };
+                        })
+                    )).then(results => {
+                        let added = 0;
+                        let skipped = 0;
+                        results.forEach(r => {
+                            if (!r) return;
+                            added += r.added || 0;
+                            skipped += r.skipped || 0;
+                        });
+                        const parts = [];
+                        if (added) parts.push(added + ' code' + (added === 1 ? '' : 's') + ' added');
+                        if (skipped) parts.push(skipped + ' skipped (already present)');
+                        if (parts.length) alert(parts.join('. ') + '.');
+                        else if (cottybookFiles.length) {
+                            alert('Codebook metadata updated; no new codes to import.');
+                        }
+                    })
+                    : Promise.reject(new Error('Codebook module is not available.')));
+
+            bookPromise.catch(err => {
+                alert('Could not import codebook: ' + (err && err.message ? err.message : err));
+            }).then(() => {
+                if (Docs && typeof Docs.importFiles === 'function') {
+                    Docs.importFiles(docFiles);
+                }
+            });
+        }
+
         function setupDragAndDrop() {
             const els = getEls();
-            const Docs = getDocs();
             let dragDepth = 0;
 
             window.addEventListener('dragenter', e => {
@@ -840,7 +1011,7 @@
                 dragDepth = 0;
                 els.dropOverlay.classList.remove('visible');
                 if (e.dataTransfer && e.dataTransfer.files) {
-                    Docs.importFiles(e.dataTransfer.files);
+                    handleDroppedFiles(e.dataTransfer.files);
                 }
             });
         }

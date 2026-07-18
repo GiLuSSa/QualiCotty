@@ -11,10 +11,12 @@
 </head>
 <body>
     <div class="ribbon">
-        <span class="app-brand" id="appBrand" title="Right-click for About">
-            <img class="app-favicon" src="favicon.png" alt="" width="28" height="28" />
-            <span class="app-title">QualiCotty</span>
-            <span class="app-version">0.01a</span>
+        <span class="app-brand" id="appBrand">
+            <img class="app-favicon" id="appFavicon" src="favicon.png" alt="" width="28" height="28" title="Pet Cotty" />
+            <span class="app-brand-info" id="appBrandInfo" title="Info" role="button" tabindex="0">
+                <span class="app-title">QualiCotty</span>
+                <span class="app-version" id="appVersion"></span>
+            </span>
         </span>
         <span class="ribbon-label">Project:</span>
         <button type="button" id="projectNameBtn" class="project-name-btn" title="Project properties">Untitled project</button>
@@ -72,7 +74,18 @@
             <div id="documentView" class="document-view" tabindex="0">
                 <div class="empty-state">
                     <p>No document loaded.</p>
-                    <p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin.</p>
+                    <p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin.
+                        You can also drop a <strong>.cotty</strong> project or a <strong>.cottybook</strong> codebook.</p>
+                    <p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>
+                    <p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>
+                    <p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>
+                    <p class="empty-state-privacy">
+                        QualiCotty runs entirely on this device. Nothing is uploaded or shared with anyone else;
+                        your materials stay local to this computer. Project data are also kept continuously in
+                        this browser&rsquo;s storage, so sensitive information may remain here after you close the page.
+                        If this computer is shared or not fully trusted, clear the project when you finish:
+                        open the project name, then choose <strong>New / Delete</strong>.
+                    </p>
                 </div>
             </div>
         </main>
@@ -84,7 +97,7 @@
     </div>
 
     <div id="dropOverlay" class="drop-overlay">
-        <div class="drop-overlay-inner">Drop .txt, .html, or .vtt files to import</div>
+        <div class="drop-overlay-inner">Drop .txt, .html, .vtt, .cotty, or .cottybook files</div>
     </div>
 
     <div id="segmentModal" class="modal-overlay">
@@ -178,9 +191,9 @@
     </div>
 
     <div id="aboutModal" class="modal-overlay">
-        <div class="modal modal-about" role="dialog" aria-label="QualiCotty 0.01a">
+        <div class="modal modal-about" role="dialog" aria-label="About QualiCotty">
             <div class="modal-header">
-                <span>QualiCotty 0.01a</span>
+                <span id="aboutModalTitle">QualiCotty</span>
                 <button type="button" id="aboutModalClose" class="modal-close" title="Close">&times;</button>
             </div>
             <div class="modal-body about-body">
@@ -191,10 +204,10 @@
                 </p>
                 <p class="about-guide-title">Quick guide</p>
                 <ul class="about-guide">
-                    <li>Import <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files by drag and drop. The document list shows about 10 at a time and scrolls if you have more.</li>
+                    <li>Import <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files by drag and drop (or a <strong>.cotty</strong> / <strong>.cottybook</strong>). The document list shows about 10 at a time and scrolls if you have more.</li>
                     <li>In <strong>Code</strong> mode, select text and press Enter to apply the active code, or press 1–9 / 0 for the first ten codes.</li>
                     <li>Use the right column to choose codes, or open <strong>Codebook</strong> to edit them.</li>
-                    <li>In <strong>Analyze</strong> mode, filter with and/or, isolate segments, or merge across documents.</li>
+                    <li>In <strong>Analyze</strong> mode, filter with and/or, use <strong>|</strong> for queries (<code>code:</code>, <code>text:</code>, <code>doc:</code>, <code>indoc:</code>), isolate segments, or merge across documents.</li>
                     <li>Open the project name to save or load a <strong>.cotty</strong> file.</li>
                     <li>wb / wf step through recent views, or Ctrl+Alt+Z and Ctrl+Alt+Y.</li>
                 </ul>
@@ -211,8 +224,10 @@
         </div>
     </div>
 
+    <script src="js/version.js"></script>
     <script src="js/palette.js"></script>
     <script src="js/save.js"></script>
+    <script src="js/analyze-query.js"></script>
     <script src="js/segments.js"></script>
     <script src="js/import/txt.js"></script>
     <script src="js/import/html.js"></script>

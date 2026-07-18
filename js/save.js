@@ -4,7 +4,7 @@
 (function (global) {
     'use strict';
 
-    const QUALICOTTY_VERSION = '0.01a';
+    const QUALICOTTY_VERSION = global.QualiCottyVersion || '0.00';
 
     function newSaveTimestamp() {
         const now = new Date();

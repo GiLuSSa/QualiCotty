@@ -8,7 +8,7 @@
 
     const STORAGE_KEY = 'qualicotty_project';
     const VIEW_KEY = 'qualicotty_view';
-    const QUALICOTTY_VERSION = '0.01a';
+    const QUALICOTTY_VERSION = window.QualiCottyVersion || '0.00';
     const DEFAULT_DESCRIPTION = 'type your description here...';
 
     function defaultColour() {
@@ -72,6 +72,9 @@
         analyzeLogic: 'and',
         analyzeFilterTags: new Set(),
         analyzeQueryMode: false,
+        analyzeQuery: '',
+        analyzeTextFilter: '',
+        analyzeQueryError: '',
         fontSizePt: 11,
         fontFamily: 'georgia',
         textAlign: 'left',
@@ -210,7 +213,11 @@
 
     const els = {
         appBrand: document.getElementById('appBrand'),
+        appFavicon: document.getElementById('appFavicon'),
+        appBrandInfo: document.getElementById('appBrandInfo'),
+        appVersion: document.getElementById('appVersion'),
         aboutModal: document.getElementById('aboutModal'),
+        aboutModalTitle: document.getElementById('aboutModalTitle'),
         aboutModalClose: document.getElementById('aboutModalClose'),
         projectNameBtn: document.getElementById('projectNameBtn'),
         projectModal: document.getElementById('projectModal'),

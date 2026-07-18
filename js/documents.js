@@ -77,6 +77,26 @@
         return Math.max(min, Math.min(max, v));
     }
 
+    function emptyStateHtml() {
+        return (
+            '<div class="empty-state">' +
+            '<p>No document loaded.</p>' +
+            '<p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin. ' +
+            'You can also drop a <strong>.cotty</strong> project or a <strong>.cottybook</strong> codebook.</p>' +
+            '<p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>' +
+            '<p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>' +
+            '<p class="empty-state-spacer" aria-hidden="true">&nbsp;</p>' +
+            '<p class="empty-state-privacy">' +
+            'QualiCotty runs entirely on this device. Nothing is uploaded or shared with anyone else; ' +
+            'your materials stay local to this computer. Project data are also kept continuously in ' +
+            'this browser\u2019s storage, so sensitive information may remain here after you close the page. ' +
+            'If this computer is shared or not fully trusted, clear the project when you finish: ' +
+            'open the project name, then choose <strong>New / Delete</strong>.' +
+            '</p>' +
+            '</div>'
+        );
+    }
+
     /**
      * @param {object} ctx
      */
@@ -366,11 +386,7 @@
             if (merge) {
                 if (state.documents.length === 0) {
                     els.documentView.classList.remove('isolating');
-                    els.documentView.innerHTML =
-                        '<div class="empty-state">' +
-                        '<p>No document loaded.</p>' +
-                        '<p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin.</p>' +
-                        '</div>';
+                    els.documentView.innerHTML = emptyStateHtml();
                     return;
                 }
                 renderMergedIsolatedView();
@@ -380,11 +396,7 @@
             const doc = getActiveDocument();
             if (!doc) {
                 els.documentView.classList.remove('isolating');
-                els.documentView.innerHTML =
-                    '<div class="empty-state">' +
-                    '<p>No document loaded.</p>' +
-                    '<p>Drag &amp; drop one or more <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files here to begin.</p>' +
-                    '</div>';
+                els.documentView.innerHTML = emptyStateHtml();
                 return;
             }
 

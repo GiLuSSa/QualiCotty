@@ -48,7 +48,6 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    cursor: context-menu;
 }
 
 .app-favicon {
@@ -58,6 +57,27 @@ body {
     flex: 0 0 auto;
     display: block;
     border-radius: 4px;
+    cursor: pointer;
+    transform-origin: center bottom;
+}
+
+.app-favicon.pet {
+    animation: pet-cotty 0.45s ease-out;
+}
+
+@keyframes pet-cotty {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.28); }
+    55% { transform: scale(0.94); }
+    75% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+.app-brand-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
 }
 
 .app-title {
@@ -438,6 +458,20 @@ body {
     margin-bottom: 10px;
 }
 
+.empty-state-spacer {
+    margin-bottom: 0;
+    line-height: 1.2;
+    height: 1.2em;
+}
+
+.empty-state-privacy {
+    max-width: 34em;
+    margin: 0 auto;
+    font-size: 0.92em;
+    line-height: 1.5;
+    color: #888;
+}
+
 /* Highlights */
 .hl {
     border-radius: 2px;
@@ -676,6 +710,15 @@ body {
 .analyze-query-box:focus {
     outline: none;
     border-color: var(--accent);
+}
+
+.analyze-query-error {
+    margin-top: 4px;
+    padding: 0 2px;
+    color: #f6a5a5;
+    font-size: 11px;
+    line-height: 1.35;
+    flex: 0 0 auto;
 }
 
 .analyze-stats {

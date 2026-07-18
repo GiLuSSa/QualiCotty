@@ -123,8 +123,9 @@
         // Filter expression for the header line.
         let filterPhrase = '';
         if (state.analyzeQueryMode) {
-            const box = document.getElementById('analyzeQueryBox');
-            const expr = box ? String(box.value || '').trim() : '';
+            const expr = typeof state.analyzeQuery === 'string'
+                ? state.analyzeQuery.trim()
+                : '';
             filterPhrase = expr || '(empty query)';
         } else {
             const tags = Array.from(state.analyzeFilterTags || []);
@@ -138,14 +139,48 @@
                 const joiner = state.analyzeLogic === 'or' ? ' or ' : ' and ';
                 filterPhrase = names.join(joiner);
             }
+            const textFilter = typeof state.analyzeTextFilter === 'string'
+                ? state.analyzeTextFilter.trim()
+                : '';
+            if (textFilter) {
+                filterPhrase += ' and text:"' + textFilter.replace(/"/g, '\\"') + '"';
+            }
         }
 
-        const docNames = docsWithRows.map(d => d.name || 'Untitled');
+        // Documents line = search scope (not only docs that produced rows).
+        // Merge on → all project documents; merge off → active document only.
+        // Custom query with indoc: → report indoc: terms instead.
+        let docScopeNames = [];
+        let docScopeFromIndoc = false;
+
+        if (state.analyzeQueryMode && global.QualiCottyAnalyzeQuery) {
+            const Q = global.QualiCottyAnalyzeQuery;
+            const raw = typeof state.analyzeQuery === 'string' ? state.analyzeQuery : '';
+            const knownNames = codes.map(c => c.name);
+            const compiled = Q.compile(raw, { knownCodeNames: knownNames });
+            if (compiled.ok && compiled.ast && typeof Q.formatIndocScope === 'function') {
+                const indocLabel = Q.formatIndocScope(compiled.ast);
+                if (indocLabel) {
+                    docScopeFromIndoc = true;
+                    docScopeNames = [indocLabel];
+                }
+            }
+        }
+
+        if (!docScopeFromIndoc) {
+            if (state.mergeSegments) {
+                docScopeNames = state.documents.map(d => d.name || 'Untitled');
+            } else {
+                const activeTs = state.activeDocumentTimestamp;
+                const active = state.documents.find(d => d.timestamp === activeTs);
+                docScopeNames = active ? [active.name || 'Untitled'] : [];
+            }
+        }
 
         const metaLine =
             'Exported by QualiCotty, ' + stamp.day + ' at ' + stamp.time +
-            ' by ' + authorLabel + '. Codes ' + filterPhrase +
-            '. Documents ' + (docNames.length ? docNames.join(', ') : '(none)') + '.';
+            ' by ' + authorLabel + '. Codes: ' + filterPhrase +
+            '. Documents: ' + (docScopeNames.length ? docScopeNames.join(', ') : '(none)') + '.';
 
         return {
             stamp: stamp,
@@ -154,7 +189,7 @@
             filterPhrase: filterPhrase,
             codes: codes,
             documents: docsWithRows,
-            allDocumentsForMeta: docsWithRows,
+            allDocumentsForMeta: docScopeNames,
             rows: rows,
             projectName: (state.codebook && state.codebook.project) || 'Untitled project',
             isolate: !!(state.mode === 'analyze' && state.isolateSegments),
