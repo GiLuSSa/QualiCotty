@@ -528,8 +528,13 @@
         function setup() {
             const els = getEls();
             els.codebookModalClose.addEventListener('click', closeModal);
+            let downOnOverlay = false;
+            els.codebookModal.addEventListener('mousedown', e => {
+                downOnOverlay = (e.target === els.codebookModal);
+            });
             els.codebookModal.addEventListener('click', e => {
-                if (e.target === els.codebookModal) closeModal();
+                if (e.target === els.codebookModal && downOnOverlay) closeModal();
+                downOnOverlay = false;
             });
             els.codebookPropName.addEventListener('change', applyMetaFromInputs);
             els.codebookPropDescription.addEventListener('change', applyMetaFromInputs);

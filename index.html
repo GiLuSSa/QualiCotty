@@ -44,10 +44,10 @@
                 <option value="verdana">Verdana</option>
             </select>
             <div class="align-toggle" role="group" aria-label="Text alignment">
-                <button type="button" id="alignLeft" class="align-btn active" data-align="left" title="Align left">
+                <button type="button" id="alignLeft" class="align-btn" data-align="left" title="Align left">
                     <span class="align-icon align-icon-left" aria-hidden="true"></span>
                 </button>
-                <button type="button" id="alignJustifyLeft" class="align-btn" data-align="justify-left" title="Justify left">
+                <button type="button" id="alignJustifyLeft" class="align-btn active" data-align="justify-left" title="Justify left">
                     <span class="align-icon align-icon-justify-left" aria-hidden="true"></span>
                 </button>
                 <button type="button" id="alignJustifyRight" class="align-btn" data-align="justify-right" title="Justify right">
@@ -113,7 +113,7 @@
                 <div id="segmentTags" class="segment-tags"></div>
                 <div class="modal-field-label">Comment</div>
                 <textarea id="segmentComment" class="segment-comment" placeholder="Add a comment for this segment..."></textarea>
-                <div class="modal-actions">
+                <div class="modal-actions modal-actions-start">
                     <button type="button" id="segmentDeleteBtn" class="modal-danger-btn">Delete</button>
                 </div>
             </div>
@@ -131,6 +131,12 @@
                 <input type="text" id="documentPropName" class="modal-text-input" placeholder="Document name" autocomplete="off" />
                 <label class="modal-field-label" for="documentPropDescription">Description</label>
                 <textarea id="documentPropDescription" class="segment-comment" placeholder="Add a description for this document..."></textarea>
+                <label class="modal-field-label" for="documentPropType">Document type</label>
+                <input type="text" id="documentPropType" class="modal-text-input" placeholder="e.g. interview, focus group" autocomplete="off" />
+                <label class="modal-field-label" for="documentPropPersons">Persons</label>
+                <input type="text" id="documentPropPersons" class="modal-text-input" placeholder="e.g. cat, dog, mr pidgeon" autocomplete="off" />
+                <label class="modal-field-label" for="documentPropKeywords">Keywords</label>
+                <input type="text" id="documentPropKeywords" class="modal-text-input" placeholder="e.g. mobility, care, trust" autocomplete="off" />
                 <label class="modal-field-label" for="documentPropColour">Colour</label>
                 <div class="document-colour-row">
                     <input type="color" id="documentPropColour" class="codebook-colour" title="Document colour" value="#4a90e2" />
@@ -207,7 +213,7 @@
                     <li>Import <strong>.txt</strong>, <strong>.html</strong>, or <strong>.vtt</strong> files by drag and drop (or a <strong>.cotty</strong> / <strong>.cottybook</strong>). The document list shows about 10 at a time and scrolls if you have more.</li>
                     <li>In <strong>Code</strong> mode, select text and press Enter to apply the active code, or press 1–9 / 0 for the first ten codes.</li>
                     <li>Use the right column to choose codes, or open <strong>Codebook</strong> to edit them.</li>
-                    <li>In <strong>Analyze</strong> mode, filter with and/or, use <strong>|</strong> for queries (<code>code:</code>, <code>text:</code>, <code>doc:</code>, <code>indoc:</code>), isolate segments, or merge across documents.</li>
+                    <li>In <strong>Analyze</strong> mode, filter with and/or, use <strong>|</strong> for queries (<code>code:</code>, <code>text:</code>, <code>doctype:</code>, <code>persons:</code>, <code>keywords:</code>, <code>indoc:</code>), isolate segments, or merge across documents.</li>
                     <li>Open the project name to save or load a <strong>.cotty</strong> file.</li>
                     <li>wb / wf step through recent views, or Ctrl+Alt+Z and Ctrl+Alt+Y.</li>
                 </ul>

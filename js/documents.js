@@ -46,12 +46,15 @@
         return normalizeHex(colour);
     }
 
-    /** Ensure a document object has name, text, description, colour. */
+    /** Ensure a document object has name, text, description, colour, and metadata fields. */
     function normalizeDocument(doc) {
         if (!doc || typeof doc !== 'object') return doc;
         if (typeof doc.name !== 'string') doc.name = 'Untitled';
         if (typeof doc.text !== 'string') doc.text = '';
         if (typeof doc.description !== 'string') doc.description = '';
+        if (typeof doc.docType !== 'string') doc.docType = '';
+        if (typeof doc.persons !== 'string') doc.persons = '';
+        if (typeof doc.keywords !== 'string') doc.keywords = '';
         doc.colour = normalizeHex(doc.colour || DEFAULT_DOCUMENT_COLOUR);
         if (!doc.timestamp) doc.timestamp = newTimestamp();
         return doc;
@@ -69,6 +72,9 @@
             this.name = name;
             this.text = text;
             this.description = typeof description === 'string' ? description : '';
+            this.docType = '';
+            this.persons = '';
+            this.keywords = '';
             this.colour = normalizeHex(colour || DEFAULT_DOCUMENT_COLOUR);
         }
     }
@@ -177,6 +183,9 @@
             editingDocument = doc;
             els.documentPropName.value = doc.name || '';
             els.documentPropDescription.value = doc.description || '';
+            if (els.documentPropType) els.documentPropType.value = doc.docType || '';
+            if (els.documentPropPersons) els.documentPropPersons.value = doc.persons || '';
+            if (els.documentPropKeywords) els.documentPropKeywords.value = doc.keywords || '';
             els.documentPropColour.value = normalizeHex(doc.colour);
             syncDocumentColourPreview();
             els.documentModal.classList.add('visible');
@@ -190,6 +199,9 @@
                 const name = els.documentPropName.value.trim();
                 editingDocument.name = name || editingDocument.name || 'Untitled';
                 editingDocument.description = els.documentPropDescription.value;
+                if (els.documentPropType) editingDocument.docType = els.documentPropType.value;
+                if (els.documentPropPersons) editingDocument.persons = els.documentPropPersons.value;
+                if (els.documentPropKeywords) editingDocument.keywords = els.documentPropKeywords.value;
                 editingDocument.colour = normalizeHex(els.documentPropColour.value);
                 saveState();
                 renderDocumentList();
@@ -203,8 +215,13 @@
             if (!els.documentModal) return;
 
             els.documentModalClose.addEventListener('click', closeDocumentModal);
+            let downOnOverlay = false;
+            els.documentModal.addEventListener('mousedown', e => {
+                downOnOverlay = (e.target === els.documentModal);
+            });
             els.documentModal.addEventListener('click', e => {
-                if (e.target === els.documentModal) closeDocumentModal();
+                if (e.target === els.documentModal && downOnOverlay) closeDocumentModal();
+                downOnOverlay = false;
             });
 
             els.documentPropName.addEventListener('input', () => {
@@ -220,6 +237,27 @@
                 saveState();
                 renderDocumentList();
             });
+            if (els.documentPropType) {
+                els.documentPropType.addEventListener('input', () => {
+                    if (!editingDocument) return;
+                    editingDocument.docType = els.documentPropType.value;
+                    saveState();
+                });
+            }
+            if (els.documentPropPersons) {
+                els.documentPropPersons.addEventListener('input', () => {
+                    if (!editingDocument) return;
+                    editingDocument.persons = els.documentPropPersons.value;
+                    saveState();
+                });
+            }
+            if (els.documentPropKeywords) {
+                els.documentPropKeywords.addEventListener('input', () => {
+                    if (!editingDocument) return;
+                    editingDocument.keywords = els.documentPropKeywords.value;
+                    saveState();
+                });
+            }
             els.documentPropColour.addEventListener('input', () => {
                 if (!editingDocument) return;
                 editingDocument.colour = normalizeHex(els.documentPropColour.value);
@@ -290,6 +328,7 @@
                 units.forEach((unit, idx) => {
                     if (idx > 0) frag.appendChild(Seg.createOmittedSep());
                     Seg.paintDisplayUnit(frag, doc, unit);
+                    Seg.appendUnitComments(frag, doc, unit);
                 });
                 return;
             }
@@ -299,20 +338,37 @@
                 return;
             }
 
-            let cursor = 0;
-            units.forEach(unit => {
-                if (unit.start > cursor) {
-                    frag.appendChild(document.createTextNode(text.slice(cursor, unit.start)));
+            // Merge overlapping/adjacent unit ranges so the flowing (non-isolated)
+            // view paints each character once, even when the same text is coded by
+            // separate overlapping segments. paintDisplayUnit handles internal
+            // striping for the merged range.
+            const ranges = units
+                .map(u => ({ start: u.start, end: u.end }))
+                .sort((a, b) => a.start - b.start);
+            const merged = [];
+            ranges.forEach(r => {
+                const last = merged[merged.length - 1];
+                if (last && r.start <= last.end) {
+                    if (r.end > last.end) last.end = r.end;
+                } else {
+                    merged.push({ start: r.start, end: r.end });
                 }
-                Seg.paintDisplayUnit(frag, doc, unit);
-                cursor = unit.end;
+            });
+
+            let cursor = 0;
+            merged.forEach(range => {
+                if (range.start > cursor) {
+                    frag.appendChild(document.createTextNode(text.slice(cursor, range.start)));
+                }
+                Seg.paintDisplayUnit(frag, doc, range);
+                cursor = range.end;
             });
             if (cursor < text.length) {
                 frag.appendChild(document.createTextNode(text.slice(cursor)));
             }
         }
 
-        function renderMergedIsolatedView() {
+        function renderMergedView(isolate) {
             const state = getState();
             const els = getEls();
             const Seg = getSeg();
@@ -321,17 +377,22 @@
 
             state.documents.forEach(doc => {
                 const units = Seg.computeAnalyzeDisplayUnits(doc);
-                if (units.length === 0) return;
+                if (isolate && units.length === 0) return;
 
                 const header = document.createElement('div');
                 header.className = 'merge-doc-header';
                 header.textContent = doc.name;
                 frag.appendChild(header);
 
-                units.forEach((unit, idx) => {
-                    if (idx > 0) frag.appendChild(Seg.createOmittedSep());
-                    Seg.paintDisplayUnit(frag, doc, unit);
-                });
+                if (isolate) {
+                    units.forEach((unit, idx) => {
+                        if (idx > 0) frag.appendChild(Seg.createOmittedSep());
+                        Seg.paintDisplayUnit(frag, doc, unit);
+                        Seg.appendUnitComments(frag, doc, unit);
+                    });
+                } else {
+                    appendDocText(frag, doc, false);
+                }
 
                 anyShown = true;
             });
@@ -339,13 +400,15 @@
             if (!anyShown) {
                 const empty = document.createElement('div');
                 empty.className = 'empty-state';
-                empty.innerHTML = '<p>No visible segments to merge.</p>';
+                empty.innerHTML = isolate
+                    ? '<p>No visible segments to merge.</p>'
+                    : '<p>No documents to display.</p>';
                 frag.appendChild(empty);
             }
 
             els.documentView.innerHTML = '';
             els.documentView.appendChild(frag);
-            els.documentView.classList.add('isolating');
+            els.documentView.classList.toggle('isolating', !!isolate);
             Seg.updateAnalyzeStats();
         }
 
@@ -369,7 +432,6 @@
             const state = getState();
             applyViewChange(() => {
                 state.isolateSegments = false;
-                state.mergeSegments = false;
                 if (docTs) {
                     state.activeDocumentTimestamp = docTs;
                 }
@@ -381,7 +443,7 @@
             const els = getEls();
             const Seg = getSeg();
             const isolate = state.mode === 'analyze' && state.isolateSegments;
-            const merge = isolate && state.mergeSegments;
+            const merge = state.mode === 'analyze' && state.mergeSegments;
 
             if (merge) {
                 if (state.documents.length === 0) {
@@ -389,7 +451,7 @@
                     els.documentView.innerHTML = emptyStateHtml();
                     return;
                 }
-                renderMergedIsolatedView();
+                renderMergedView(isolate);
                 return;
             }
 

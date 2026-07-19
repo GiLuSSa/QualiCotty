@@ -48,6 +48,26 @@
             .replace(/"/g, '&quot;');
     }
 
+    /** Preserve spaces in print (some engines collapse them in highlighted titles). */
+    function escapeHtmlNbsp(s) {
+        return escapeHtml(s).replace(/ /g, '&nbsp;');
+    }
+
+    const DEFAULT_CODE_DESCRIPTION = 'type your description here...';
+    const DEFAULT_SEGMENT_COMMENT = 'Add a comment for this segment...';
+
+    function meaningfulCodeDescription(desc) {
+        const s = typeof desc === 'string' ? desc.trim() : '';
+        if (!s || s === DEFAULT_CODE_DESCRIPTION) return '';
+        return s;
+    }
+
+    function meaningfulSegmentComment(comment) {
+        const s = typeof comment === 'string' ? comment.trim() : '';
+        if (!s || s === DEFAULT_SEGMENT_COMMENT) return '';
+        return s;
+    }
+
     function displayColour(hex) {
         if (global.QualiCottyPalette && typeof global.QualiCottyPalette.displayColour === 'function') {
             return global.QualiCottyPalette.displayColour(hex);
@@ -88,7 +108,7 @@
 
         // Documents currently represented on screen (same rules as the view).
         let docs = [];
-        if (state.mergeSegments && state.isolateSegments) {
+        if (state.mergeSegments) {
             docs = state.documents.slice();
         } else {
             const activeTs = state.activeDocumentTimestamp;
@@ -108,10 +128,18 @@
                 const text = doc.text.slice(unit.start, unit.end);
                 const codeSet = {};
                 (unit.codes || []).forEach(ts => { codeSet[ts] = true; });
+                const comments = [];
+                state.segments.forEach(s => {
+                    if (s.documentTimestamp !== doc.timestamp) return;
+                    if (s.coordinates.end <= unit.start || s.coordinates.start >= unit.end) return;
+                    const c = meaningfulSegmentComment(s.comment);
+                    if (c && comments.indexOf(c) === -1) comments.push(c);
+                });
                 rows.push({
                     documentName: doc.name || 'Untitled',
                     documentTimestamp: doc.timestamp,
                     text: text,
+                    comment: comments.join(' | '),
                     codeSet: codeSet,
                     start: unit.start,
                     end: unit.end,
@@ -193,7 +221,8 @@
             rows: rows,
             projectName: (state.codebook && state.codebook.project) || 'Untitled project',
             isolate: !!(state.mode === 'analyze' && state.isolateSegments),
-            merge: !!(state.mergeSegments && state.isolateSegments),
+            merge: !!state.mergeSegments,
+            textAlign: state.textAlign || 'justify-left',
             state: state,
             getCodeByTimestamp: getCodeByTimestamp,
             getSeg: function () { return Seg; }
@@ -203,13 +232,13 @@
     function buildCsvString(snapshot) {
         const lines = [];
 
-        const header = ['document name', 'text'].concat(
+        const header = ['document name', 'text', 'comment'].concat(
             snapshot.codes.map(c => c.name || 'Code')
         );
         lines.push(csvLine(header));
 
         snapshot.rows.forEach(row => {
-            const cells = [row.documentName, row.text];
+            const cells = [row.documentName, row.text, row.comment || ''];
             snapshot.codes.forEach(code => {
                 cells.push(row.codeSet[code.timestamp] ? '1' : '');
             });
@@ -221,9 +250,10 @@
         lines.push('');
 
         snapshot.codes.forEach(code => {
+            const desc = meaningfulCodeDescription(code.description);
             lines.push(csvLine([
                 code.name || 'Code',
-                typeof code.description === 'string' ? code.description : ''
+                desc
             ]));
         });
 
@@ -256,12 +286,19 @@
                 const code = getCodeByTimestamp ? getCodeByTimestamp(ts) : null;
                 return code ? displayColour(code.colour) : '#ffe066';
             });
-            let bg = colours[0] || '#ffe066';
-            if (colours.length > 1 && global.QualiCottyPalette &&
-                typeof global.QualiCottyPalette.blendColours === 'function') {
-                bg = global.QualiCottyPalette.blendColours(colours);
+            const first = colours[0] || '#ffe066';
+            if (colours.length <= 1) {
+                return '<mark style="background-color:' + escapeHtml(first) +
+                    ';color:#111;padding:0 0.05em;">' + escapeHtml(slice) + '</mark>';
             }
-            return '<mark style="background-color:' + escapeHtml(bg) +
+            const stripes = global.QualiCottyPalette &&
+                typeof global.QualiCottyPalette.stripeBackground === 'function'
+                ? global.QualiCottyPalette.stripeBackground(colours)
+                : first;
+            const style = stripes.indexOf('gradient') !== -1
+                ? 'background-image:' + stripes + ';background-color:' + escapeHtml(first)
+                : 'background-color:' + escapeHtml(stripes);
+            return '<mark style="' + style +
                 ';color:#111;padding:0 0.05em;">' + escapeHtml(slice) + '</mark>';
         }
 
@@ -299,50 +336,62 @@
             return html;
         }
 
+        function commentsHtmlForUnit(unit) {
+            const comments = [];
+            snapshot.state.segments.forEach(s => {
+                if (s.documentTimestamp !== doc.timestamp) return;
+                if (s.coordinates.end <= unit.start || s.coordinates.start >= unit.end) return;
+                const c = meaningfulSegmentComment(s.comment);
+                if (c && comments.indexOf(c) === -1) comments.push(c);
+            });
+            if (!comments.length) return '';
+            return comments.map(c =>
+                '<div class="seg-comment">' + escapeHtml(c) + '</div>'
+            ).join('');
+        }
+
         if (units.length === 0) {
             return isolate
                 ? '<p class="muted">No visible segments.</p>'
-                : '<div class="doc-body"><div class="seg">' + escapeHtml(text) + '</div></div>';
+                : '<div class="doc-body">' + escapeHtml(text) + '</div>';
         }
 
-        // One block per segment so each starts on its own line.
         if (isolate) {
             return '<div class="doc-body">' + units.map(unit =>
-                '<div class="seg">' + paintUnitHtml(unit) + '</div>'
+                '<div class="seg">' + paintUnitHtml(unit) + '</div>' +
+                commentsHtmlForUnit(unit)
             ).join('') + '</div>';
         }
 
+        // Isolation off: continuous flow, no forced line breaks between segments.
         let html = '';
         let cursor = 0;
         units.forEach(unit => {
             if (unit.start > cursor) {
-                const gap = text.slice(cursor, unit.start);
-                if (gap.trim()) {
-                    html += '<div class="ctx">' + escapeHtml(gap) + '</div>';
-                }
+                html += escapeHtml(text.slice(cursor, unit.start));
             }
-            html += '<div class="seg">' + paintUnitHtml(unit) + '</div>';
+            html += '<span class="seg-inline">' + paintUnitHtml(unit) + '</span>';
+            html += commentsHtmlForUnit(unit);
             cursor = unit.end;
         });
         if (cursor < text.length) {
-            const tail = text.slice(cursor);
-            if (tail.trim()) {
-                html += '<div class="ctx">' + escapeHtml(tail) + '</div>';
-            }
+            html += escapeHtml(text.slice(cursor));
         }
-        return '<div class="doc-body">' + html + '</div>';
+        return '<div class="doc-body flow">' + html + '</div>';
     }
 
     function buildPdfHtml(snapshot) {
         const codeBlocks = snapshot.codes.map(code => {
             const col = displayColour(code.colour || '#ffe066');
+            const desc = meaningfulCodeDescription(code.description);
             return (
                 '<div class="entry">' +
                 '<div class="entry-title" style="background-color:' + escapeHtml(col) + ';">' +
-                escapeHtml(code.name || 'Code') + '</div>' +
-                '<div class="entry-desc">' +
-                escapeHtml(typeof code.description === 'string' ? code.description : '') +
-                '</div></div>'
+                escapeHtmlNbsp(code.name || 'Code') + '</div>' +
+                (desc
+                    ? '<div class="entry-desc">' + escapeHtml(desc) + '</div>'
+                    : '') +
+                '</div>'
             );
         }).join('');
 
@@ -352,7 +401,6 @@
         if (snapshot.documents.length === 0) {
             bodyHtml = '<p class="muted">No documents with visible segments to export.</p>';
         } else if (merged) {
-            // Continuous flow: document headers inline, no page breaks between docs.
             bodyHtml = snapshot.documents.map(doc =>
                 '<div class="doc-block">' +
                 '<h2 class="doc-page-title">' + escapeHtml(doc.name || 'Untitled') + '</h2>' +
@@ -370,6 +418,20 @@
 
         const pageTitle = 'QualiCotty - ' + (snapshot.projectName || 'Untitled project');
 
+        const alignMode = snapshot.textAlign || 'justify-left';
+        let bodyAlign = 'left';
+        let bodyAlignLast = 'auto';
+        if (alignMode === 'right') {
+            bodyAlign = 'right';
+        } else if (alignMode === 'justify-left') {
+            bodyAlign = 'justify';
+            bodyAlignLast = 'left';
+        } else if (alignMode === 'justify-right') {
+            bodyAlign = 'justify';
+            bodyAlignLast = 'right';
+        }
+        const bodyAlignCss = 'text-align:' + bodyAlign + ';text-align-last:' + bodyAlignLast + ';';
+
         return '<!DOCTYPE html><html><head><meta charset="utf-8">' +
             '<title>' + escapeHtml(pageTitle) + '</title>' +
             '<style>' +
@@ -384,12 +446,14 @@
             '.meta { margin: 0 0 18px; font-size: 10pt; color: #333; }' +
             'h2.section { font-size: 13pt; margin: 18px 0 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }' +
             '.entry { margin: 0 0 12px; }' +
-            '.entry-title { display: inline-block; font-weight: 700; font-size: 11pt; padding: 2px 8px; border-radius: 3px; color: #111; }' +
-            '.entry-desc { margin-top: 4px; font-weight: 400; white-space: pre-wrap; }' +
+            '.entry-title { display: inline-block; font-weight: 700; font-size: 11pt; padding: 2px 8px; border-radius: 3px; color: #111; white-space: pre-wrap; }' +
+            '.entry-desc { margin-top: 4px; font-weight: 400; white-space: pre-wrap; ' + bodyAlignCss + ' }' +
             '.doc-page-title { font-size: 14pt; margin: 0 0 10px; }' +
-            '.doc-body { word-wrap: break-word; }' +
-            '.seg { display: block; margin: 0 0 0.85em; white-space: pre-wrap; }' +
-            '.ctx { display: block; margin: 0 0 0.85em; white-space: pre-wrap; color: #444; }' +
+            '.doc-body { word-wrap: break-word; ' + bodyAlignCss + ' }' +
+            '.doc-body.flow { white-space: pre-wrap; }' +
+            '.seg { display: block; margin: 0 0 0.85em; white-space: pre-wrap; ' + bodyAlignCss + ' }' +
+            '.seg-inline { white-space: pre-wrap; }' +
+            '.seg-comment { display: block; margin: 0.15em 0 0.75em; font-size: 0.67em; font-style: italic; color: #444; white-space: pre-wrap; text-align: left; }' +
             'mark { border-radius: 2px; }' +
             '.muted { color: #666; font-style: italic; }' +
             '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }' +

@@ -1,5 +1,6 @@
 /* QualiCotty — Analyze custom query language
- * code: / text: / doc: / indoc: with and/or/not and parentheses.
+ * code: / text: / doctype: / persons: / keywords: / indoc:
+ * with and/or/not and parentheses.
  * Exposes window.QualiCottyAnalyzeQuery.
  */
 (function (global) {
@@ -69,7 +70,7 @@
                 continue;
             }
 
-            // Keyword or typed prefix: code: text: doc: indoc:
+            // Keyword or typed prefix: code: text: doctype: persons: keywords: indoc:
             if (/[A-Za-z_]/.test(ch)) {
                 const start = i;
                 let word = '';
@@ -80,11 +81,15 @@
 
                 if (peek() === ':') {
                     i += 1; // consume ':'
-                    if (lower === 'code' || lower === 'text' || lower === 'doc' || lower === 'indoc') {
+                    if (lower === 'code' || lower === 'text' || lower === 'indoc' ||
+                        lower === 'doctype' || lower === 'persons' || lower === 'keywords') {
                         tokens.push({ type: 'PREFIX', value: lower, index: start });
                         continue;
                     }
-                    throw new QueryError('Unknown prefix “' + word + ':”. Use code:, text:, doc:, or indoc:.', start);
+                    throw new QueryError(
+                        'Unknown prefix “' + word + ':”. Use code:, text:, doctype:, persons:, keywords:, or indoc:.',
+                        start
+                    );
                 }
 
                 if (lower === 'and' || lower === 'or' || lower === 'not') {
@@ -93,7 +98,7 @@
                 }
 
                 throw new QueryError(
-                    'Unexpected word “' + word + '”. Use quoted names, code:/text:/doc:/indoc:, and/or/not.',
+                    'Unexpected word “' + word + '”. Use quoted names, code:/text:/doctype:/persons:/keywords:/indoc:, and/or/not.',
                     start
                 );
             }
@@ -188,6 +193,9 @@
                 const str = expect('STRING', 'a quoted string');
                 if (kind === 'code') return { type: 'Code', name: str.value };
                 if (kind === 'text') return { type: 'Text', value: str.value };
+                if (kind === 'doctype' || kind === 'persons' || kind === 'keywords') {
+                    return { type: 'Field', field: kind, value: str.value };
+                }
                 throw new QueryError('Internal: bad scoped kind.', str.index);
             }
             return scopedOr();
@@ -251,21 +259,17 @@
                     return { type: 'Doc', value: str.value, via: 'indoc' };
                 }
 
-                if (kind === 'doc') {
-                    const str = expect('STRING', 'a quoted document name after doc:');
-                    return { type: 'Doc', value: str.value, via: 'doc' };
-                }
-
-                // code: or text:
+                // code: / text: / doctype: / persons: / keywords:
                 if (current().type === '(') {
                     pos += 1;
-                    const inner = parseScopedBool(kind === 'code' ? 'code' : 'text');
+                    const inner = parseScopedBool(kind);
                     expect(')', '“)”');
                     return inner;
                 }
                 const str = expect('STRING', 'a quoted string after ' + kind + ':');
                 if (kind === 'code') return { type: 'Code', name: str.value };
-                return { type: 'Text', value: str.value };
+                if (kind === 'text') return { type: 'Text', value: str.value };
+                return { type: 'Field', field: kind, value: str.value };
             }
 
             if (match('(')) {
@@ -275,7 +279,7 @@
             }
 
             throw new QueryError(
-                'Expected a predicate (code:/text:/doc:/indoc: or a quoted code name).',
+                'Expected a predicate (code:/text:/doctype:/persons:/keywords:/indoc: or a quoted code name).',
                 t.index
             );
         }
@@ -402,6 +406,10 @@
                 return containsCI(ctx.text || '', ast.value);
             case 'Doc':
                 return containsCI(ctx.docName || '', ast.value);
+            case 'Field': {
+                const fields = ctx.fields || {};
+                return containsCI(fields[ast.field] || '', ast.value);
+            }
             default:
                 return false;
         }

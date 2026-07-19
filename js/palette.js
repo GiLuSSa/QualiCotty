@@ -234,7 +234,7 @@
     }
 
     /**
-     * Average several hex colours (for overlapping highlights).
+     * Average several hex colours (legacy / fallback).
      */
     function blendColours(colours) {
         let r = 0, g = 0, b = 0, count = 0;
@@ -246,6 +246,46 @@
         });
         if (count === 0) return DEFAULT_COLOUR;
         return rgbToHex(r / count, g / count, b / count);
+    }
+
+    function rgbaFromHex(hex, alpha) {
+        const rgb = hexToRgb(hex);
+        const a = Math.max(0, Math.min(1, Number(alpha)));
+        if (!rgb || isNaN(a)) return 'rgba(255, 224, 102, ' + (isNaN(a) ? 1 : a) + ')';
+        return 'rgba(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ', ' + a + ')';
+    }
+
+    /**
+     * CSS background-image value: repeating diagonal stripes of each colour.
+     * Preserves exact code colours on multi-code highlights.
+     * @param {string[]} colours
+     * @param {number} [bandPx=6]
+     * @param {number} [alpha=1] - 0–1 opacity for each stripe colour
+     * @returns {string} solid colour (1 colour) or repeating-linear-gradient(...)
+     */
+    function stripeBackground(colours, bandPx, alpha) {
+        const list = [];
+        const seen = Object.create(null);
+        (colours || []).forEach(hex => {
+            const n = normalizeHex(hex);
+            if (seen[n]) return;
+            seen[n] = true;
+            list.push(n);
+        });
+        if (list.length === 0) return DEFAULT_COLOUR;
+        const a = alpha == null || alpha === 1 ? 1 : Math.max(0, Math.min(1, Number(alpha)));
+        const paint = (hex) => (a >= 1 ? hex : rgbaFromHex(hex, a));
+        if (list.length === 1) return paint(list[0]);
+
+        const band = Math.max(3, Math.round(bandPx || 6));
+        const stops = [];
+        list.forEach((c, i) => {
+            const start = i * band;
+            const end = (i + 1) * band;
+            const col = paint(c);
+            stops.push(col + ' ' + start + 'px', col + ' ' + end + 'px');
+        });
+        return 'repeating-linear-gradient(45deg, ' + stops.join(', ') + ')';
     }
 
     global.QualiCottyPalette = {
@@ -261,6 +301,7 @@
         displayColour: displayColour,
         isColourUsed: isColourUsed,
         blendColours: blendColours,
+        stripeBackground: stripeBackground,
         hexToRgb: hexToRgb
     };
 })(window);

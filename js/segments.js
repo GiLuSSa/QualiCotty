@@ -94,7 +94,7 @@
             renderDocumentView,
             exitIsolationToContext,
             clamp,
-            blendColours
+            stripeBackground
         } = ctx;
 
         function collectCodeTimestamps(segments) {
@@ -120,11 +120,35 @@
                     ? global.QualiCottyPalette.displayColour(c.colour)
                     : c.colour);
 
+            const bg = colours[0] || defaultColour();
+            span.style.setProperty('--hl-bg', bg);
+
             if (colours.length <= 1) {
-                span.style.backgroundColor = colours[0] || defaultColour();
+                span.style.setProperty('--hl-image', 'none');
+                span.style.setProperty('--hl-image-hover', 'none');
             } else {
                 span.classList.add('multi');
-                span.style.backgroundColor = blendColours(colours);
+                const makeStripes = (alpha) => {
+                    if (typeof stripeBackground === 'function') {
+                        return stripeBackground(colours, 6, alpha);
+                    }
+                    if (global.QualiCottyPalette &&
+                        typeof global.QualiCottyPalette.stripeBackground === 'function') {
+                        return global.QualiCottyPalette.stripeBackground(colours, 6, alpha);
+                    }
+                    return bg;
+                };
+                const stripes = makeStripes(1);
+                const stripesHover = makeStripes(0.3);
+                if (stripes.indexOf('gradient') !== -1) {
+                    span.style.setProperty('--hl-image', stripes);
+                    span.style.setProperty('--hl-image-hover', stripesHover);
+                } else {
+                    span.style.setProperty('--hl-bg', stripes);
+                    span.style.setProperty('--hl-image', 'none');
+                    span.style.setProperty('--hl-image-hover', 'none');
+                    span.classList.remove('multi');
+                }
             }
             span.title = codeLabels(codeTimestamps).join(', ');
             span.dataset.docTs = docTs;
@@ -156,7 +180,8 @@
                     .map(s => ({
                         start: clamp(s.coordinates.start, 0, textLen),
                         end: clamp(s.coordinates.end, 0, textLen),
-                        codes: (s.codes || []).slice()
+                        codes: (s.codes || []).slice(),
+                        segment: s
                     }))
                     .filter(u => u.end > u.start);
             }
@@ -199,7 +224,12 @@
                     return Q.evaluate(compiled.ast, {
                         codeNames: codeNames,
                         text: slice,
-                        docName: doc.name || ''
+                        docName: doc.name || '',
+                        fields: {
+                            doctype: doc.docType || '',
+                            persons: doc.persons || '',
+                            keywords: doc.keywords || ''
+                        }
                     });
                 });
                 return segmentsToUnits(matched);
@@ -309,6 +339,39 @@
             }
         }
 
+        const DEFAULT_SEGMENT_COMMENT = 'Add a comment for this segment...';
+
+        /** Append meaningful segment comments below a display unit (isolate view). */
+        function appendUnitComments(frag, doc, unit) {
+            const comments = [];
+            function collect(s) {
+                const c = typeof s.comment === 'string' ? s.comment.trim() : '';
+                if (!c || c === DEFAULT_SEGMENT_COMMENT) return;
+                if (comments.indexOf(c) === -1) comments.push(c);
+            }
+
+            if (unit && unit.segment) {
+                // Per-segment unit: show only this segment's own comment, so that
+                // separately-coded overlapping passages don't repeat each other's comments.
+                collect(unit.segment);
+            } else {
+                // Merged multi-segment unit: show all overlapping comments (deduped).
+                const state = getState();
+                state.segments.forEach(s => {
+                    if (s.documentTimestamp !== doc.timestamp) return;
+                    if (s.coordinates.end <= unit.start || s.coordinates.start >= unit.end) return;
+                    collect(s);
+                });
+            }
+
+            comments.forEach(c => {
+                const el = document.createElement('div');
+                el.className = 'seg-comment';
+                el.textContent = c;
+                frag.appendChild(el);
+            });
+        }
+
         function formatAnalyzeStats(units) {
             if (units.length === 0) return '0 segments';
 
@@ -343,7 +406,7 @@
             }
 
             let units = [];
-            if (state.mergeSegments && state.isolateSegments) {
+            if (state.mergeSegments) {
                 state.documents.forEach(doc => {
                     computeAnalyzeDisplayUnits(doc).forEach(u => units.push(u));
                 });
@@ -506,6 +569,38 @@
             });
         }
 
+        let clickGuardUntil = 0;
+        let clickGuardHandler = null;
+
+        function clearClickGuard() {
+            clickGuardUntil = 0;
+            if (clickGuardHandler) {
+                document.removeEventListener('pointerdown', clickGuardHandler, true);
+                document.removeEventListener('mousedown', clickGuardHandler, true);
+                document.removeEventListener('mouseup', clickGuardHandler, true);
+                document.removeEventListener('click', clickGuardHandler, true);
+                clickGuardHandler = null;
+            }
+        }
+
+        /** Block mouse/pointer interaction for a short time after opening (avoids dblclick bleed-through). */
+        function armClickGuard(ms) {
+            clearClickGuard();
+            clickGuardUntil = Date.now() + (typeof ms === 'number' ? ms : 500);
+            clickGuardHandler = function (e) {
+                if (Date.now() >= clickGuardUntil) {
+                    clearClickGuard();
+                    return;
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            document.addEventListener('pointerdown', clickGuardHandler, true);
+            document.addEventListener('mousedown', clickGuardHandler, true);
+            document.addEventListener('mouseup', clickGuardHandler, true);
+            document.addEventListener('click', clickGuardHandler, true);
+        }
+
         function openSegmentModal(seg) {
             const state = getState();
             const els = getEls();
@@ -519,11 +614,13 @@
             renderSegmentTags(seg);
             els.segmentComment.value = seg.comment || '';
             els.segmentModal.classList.add('visible');
+            armClickGuard(250);
         }
 
         function closeSegmentModal() {
             const state = getState();
             const els = getEls();
+            clearClickGuard();
             els.segmentModal.classList.remove('visible');
             state.editingSegment = null;
         }
@@ -564,8 +661,13 @@
             const els = getEls();
             const state = getState();
             els.segmentModalClose.addEventListener('click', closeSegmentModal);
+            let downOnOverlay = false;
+            els.segmentModal.addEventListener('mousedown', e => {
+                downOnOverlay = (e.target === els.segmentModal);
+            });
             els.segmentModal.addEventListener('click', e => {
-                if (e.target === els.segmentModal) closeSegmentModal();
+                if (e.target === els.segmentModal && downOnOverlay) closeSegmentModal();
+                downOnOverlay = false;
             });
             els.segmentComment.addEventListener('input', () => {
                 if (state.editingSegment) {
@@ -587,6 +689,7 @@
             collectCodeTimestamps: collectCodeTimestamps,
             computeAnalyzeDisplayUnits: computeAnalyzeDisplayUnits,
             paintDisplayUnit: paintDisplayUnit,
+            appendUnitComments: appendUnitComments,
             updateAnalyzeStats: updateAnalyzeStats,
             getSelectionOffsets: getSelectionOffsets,
             applyActiveCodeToSelection: applyActiveCodeToSelection,

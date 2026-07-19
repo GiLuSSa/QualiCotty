@@ -73,7 +73,7 @@
             const root = document.documentElement;
             root.style.setProperty('--doc-font-size', ptToPx(state.fontSizePt) + 'px');
             root.style.setProperty('--document-font-family', FONT_FAMILIES[state.fontFamily] || FONT_FAMILIES.georgia);
-            applyTextAlign(state.textAlign || 'left');
+            applyTextAlign(state.textAlign || 'justify-left');
             if (document.activeElement !== els.fontSizeBox) {
                 els.fontSizeBox.value = formatPt(state.fontSizePt);
             }
@@ -83,7 +83,7 @@
         function applyTextAlign(align) {
             const state = getState();
             const els = getEls();
-            const mode = align || 'left';
+            const mode = align || 'justify-left';
             state.textAlign = mode;
 
             let textAlign = 'left';
@@ -424,9 +424,6 @@
             isolateBtn.addEventListener('click', () => {
                 applyViewChange(() => {
                     state.isolateSegments = !state.isolateSegments;
-                    if (!state.isolateSegments) {
-                        state.mergeSegments = false;
-                    }
                 });
             });
             els.tagBar.appendChild(isolateBtn);
@@ -436,7 +433,7 @@
             mergeBtn.className = 'mode-button analyze-tool';
             if (state.mergeSegments) mergeBtn.classList.add('active');
             mergeBtn.textContent = 'Merge';
-            mergeBtn.title = 'Show isolated segments from all documents in one view';
+            mergeBtn.title = 'Show all documents in one view (turns on isolate when first enabled)';
             mergeBtn.addEventListener('click', () => {
                 applyViewChange(() => {
                     state.mergeSegments = !state.mergeSegments;
@@ -484,7 +481,7 @@
             queryBtn.type = 'button';
             queryBtn.className = 'mode-button analyze-logic-btn';
             queryBtn.textContent = '|';
-            queryBtn.title = 'Custom query (code:/text:/doc:/indoc:)';
+            queryBtn.title = 'Custom query (code:/text:/doctype:/persons:/keywords:/indoc:)';
             if (state.analyzeQueryMode) queryBtn.classList.add('active');
             queryBtn.addEventListener('click', () => {
                 state.analyzeQueryMode = !state.analyzeQueryMode;
@@ -541,7 +538,9 @@
                     'Query syntax:\n' +
                     '  code:"Name"   code:("A" and "B")   code:("A" or "B" and not "C")\n' +
                     '  text:"cat"    text:("cat" and "dog")\n' +
-                    '  doc:"Smith"\n' +
+                    '  doctype:"interview"\n' +
+                    '  persons:"mr pidgeon"   persons:("cat" or "dog")\n' +
+                    '  keywords:"mobility"   keywords:("care" and "trust")\n' +
                     '  indoc:"Smith"\n' +
                     '  indoc:("doc1", "doc2", not "doc3")\n' +
                     '  and / or / not / ( )\n' +
@@ -881,8 +880,13 @@
             }
 
             els.aboutModalClose.addEventListener('click', closeAboutModal);
+            let aboutDownOnOverlay = false;
+            els.aboutModal.addEventListener('mousedown', e => {
+                aboutDownOnOverlay = (e.target === els.aboutModal);
+            });
             els.aboutModal.addEventListener('click', e => {
-                if (e.target === els.aboutModal) closeAboutModal();
+                if (e.target === els.aboutModal && aboutDownOnOverlay) closeAboutModal();
+                aboutDownOnOverlay = false;
             });
             document.addEventListener('keydown', e => {
                 if (e.key === 'Escape' && els.aboutModal.classList.contains('visible')) {
@@ -896,8 +900,13 @@
             updateProjectNameButton();
             els.projectNameBtn.addEventListener('click', openProjectModal);
             els.projectModalClose.addEventListener('click', closeProjectModal);
+            let projectDownOnOverlay = false;
+            els.projectModal.addEventListener('mousedown', e => {
+                projectDownOnOverlay = (e.target === els.projectModal);
+            });
             els.projectModal.addEventListener('click', e => {
-                if (e.target === els.projectModal) closeProjectModal();
+                if (e.target === els.projectModal && projectDownOnOverlay) closeProjectModal();
+                projectDownOnOverlay = false;
             });
             els.projectSaveBtn.addEventListener('click', saveProjectToCotty);
             els.projectLoadBtn.addEventListener('click', loadProjectFromCotty);

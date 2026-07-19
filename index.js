@@ -77,7 +77,7 @@
         analyzeQueryError: '',
         fontSizePt: 11,
         fontFamily: 'georgia',
-        textAlign: 'left',
+        textAlign: 'justify-left',
         colourblindMode: false,
         viewHistory: [],
         viewIndex: -1,
@@ -173,7 +173,7 @@
             localStorage.setItem(VIEW_KEY, JSON.stringify({
                 fontSizePt: state.fontSizePt,
                 fontFamily: state.fontFamily,
-                textAlign: state.textAlign || 'left',
+                textAlign: state.textAlign || 'justify-left',
                 colourblindMode: !!state.colourblindMode
             }));
         } catch (err) {
@@ -235,6 +235,9 @@
         documentModalClose: document.getElementById('documentModalClose'),
         documentPropName: document.getElementById('documentPropName'),
         documentPropDescription: document.getElementById('documentPropDescription'),
+        documentPropType: document.getElementById('documentPropType'),
+        documentPropPersons: document.getElementById('documentPropPersons'),
+        documentPropKeywords: document.getElementById('documentPropKeywords'),
         documentPropColour: document.getElementById('documentPropColour'),
         documentPropColourPreview: document.getElementById('documentPropColourPreview'),
         centerColumn: document.querySelector('.center-column'),
@@ -318,8 +321,8 @@
                 Docs.exitIsolationToContext(docTs, scrollStart);
             },
             clamp: Docs.clamp,
-            blendColours: function (colours) {
-                return window.QualiCottyPalette.blendColours(colours);
+            stripeBackground: function (colours, bandPx, alpha) {
+                return window.QualiCottyPalette.stripeBackground(colours, bandPx, alpha);
             }
         });
 
