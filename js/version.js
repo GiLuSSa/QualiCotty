@@ -2,7 +2,7 @@
 (function (global) {
     'use strict';
 
-    const QUALICOTTY_VERSION = '0.02a';
+    const QUALICOTTY_VERSION = '0.03a';
 
     global.QualiCottyVersion = QUALICOTTY_VERSION;
 })(window);

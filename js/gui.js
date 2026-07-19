@@ -48,6 +48,7 @@
             getEls,
             saveState,
             saveView,
+            flushSaveDocuments,
             getDocs,
             getSeg,
             getCbk,
@@ -794,6 +795,7 @@
             state.documents.sort(byTimestamp);
             state.segments.sort(byTimestamp);
             saveState();
+            flushSaveDocuments();
             resetViewUiState();
             els.projectPropName.value = state.codebook.project || '';
             els.projectPropDescription.value = state.codebook.projectDescription || '';
@@ -829,6 +831,7 @@
             state.documents = [];
             state.segments = [];
             saveState();
+            flushSaveDocuments();
             resetViewUiState();
             els.projectPropName.value = state.codebook.project || '';
             els.projectPropDescription.value = '';

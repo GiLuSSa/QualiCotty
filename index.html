@@ -100,6 +100,18 @@
         <div class="drop-overlay-inner">Drop .txt, .html, .vtt, .cotty, or .cottybook files</div>
     </div>
 
+    <div id="bootLoadingOverlay" class="boot-loading-overlay visible" aria-hidden="false" role="status">
+        <div class="boot-loading-inner">
+            <p id="bootLoadingMessage">Loading documents…</p>
+        </div>
+    </div>
+
+    <div id="syncPendingOverlay" class="sync-pending-overlay" aria-hidden="true" role="alertdialog" aria-labelledby="syncPendingMessage">
+        <div class="sync-pending-inner">
+            <p id="syncPendingMessage">One sec. to synchronize everything…</p>
+        </div>
+    </div>
+
     <div id="segmentModal" class="modal-overlay">
         <div class="modal" role="dialog" aria-label="Segment properties">
             <div class="modal-header">
@@ -234,6 +246,7 @@
     <script src="js/version.js"></script>
     <script src="js/palette.js"></script>
     <script src="js/save.js"></script>
+    <script src="js/idb-documents.js"></script>
     <script src="js/analyze-query.js"></script>
     <script src="js/segments.js"></script>
     <script src="js/import/txt.js"></script>

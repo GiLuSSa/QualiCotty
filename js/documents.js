@@ -115,6 +115,8 @@
             getState,
             getEls,
             saveState,
+            scheduleSaveDocuments,
+            flushSaveDocuments,
             getSeg,
             isCodeVisible,
             applyViewChange
@@ -207,7 +209,7 @@
                 if (els.documentPropPersons) editingDocument.persons = els.documentPropPersons.value;
                 if (els.documentPropKeywords) editingDocument.keywords = els.documentPropKeywords.value;
                 editingDocument.colour = normalizeHex(els.documentPropColour.value);
-                saveState();
+                flushSaveDocuments();
                 renderDocumentList();
             }
             editingDocument = null;
@@ -242,6 +244,7 @@
             }
 
             saveState();
+            flushSaveDocuments();
             if (typeof applyViewChange === 'function') {
                 applyViewChange(function () {});
             } else {
@@ -268,41 +271,41 @@
                 if (!editingDocument) return;
                 const name = els.documentPropName.value.trim();
                 editingDocument.name = name || editingDocument.name || 'Untitled';
-                saveState();
+                scheduleSaveDocuments();
                 renderDocumentList();
             });
             els.documentPropDescription.addEventListener('input', () => {
                 if (!editingDocument) return;
                 editingDocument.description = els.documentPropDescription.value;
-                saveState();
+                scheduleSaveDocuments();
                 renderDocumentList();
             });
             if (els.documentPropType) {
                 els.documentPropType.addEventListener('input', () => {
                     if (!editingDocument) return;
                     editingDocument.docType = els.documentPropType.value;
-                    saveState();
+                    scheduleSaveDocuments();
                 });
             }
             if (els.documentPropPersons) {
                 els.documentPropPersons.addEventListener('input', () => {
                     if (!editingDocument) return;
                     editingDocument.persons = els.documentPropPersons.value;
-                    saveState();
+                    scheduleSaveDocuments();
                 });
             }
             if (els.documentPropKeywords) {
                 els.documentPropKeywords.addEventListener('input', () => {
                     if (!editingDocument) return;
                     editingDocument.keywords = els.documentPropKeywords.value;
-                    saveState();
+                    scheduleSaveDocuments();
                 });
             }
             els.documentPropColour.addEventListener('input', () => {
                 if (!editingDocument) return;
                 editingDocument.colour = normalizeHex(els.documentPropColour.value);
                 syncDocumentColourPreview();
-                saveState();
+                scheduleSaveDocuments();
                 renderDocumentList();
             });
             if (els.documentDeleteBtn) {
@@ -524,7 +527,7 @@
 
             let pending = files.length;
             const finish = () => {
-                saveState();
+                flushSaveDocuments();
                 applyViewChange(function () {});
             };
             files.forEach(file => {
