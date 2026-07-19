@@ -99,6 +99,9 @@
     function saveState() {
         state.documents.sort(byTimestamp);
         state.segments.sort(byTimestamp);
+        if (window.QualiCottyDocuments && window.QualiCottyDocuments.normalizeDocuments) {
+            window.QualiCottyDocuments.normalizeDocuments(state.documents);
+        }
         const data = {
             codebook: state.codebook,
             documents: state.documents,
@@ -240,6 +243,7 @@
         documentPropKeywords: document.getElementById('documentPropKeywords'),
         documentPropColour: document.getElementById('documentPropColour'),
         documentPropColourPreview: document.getElementById('documentPropColourPreview'),
+        documentDeleteBtn: document.getElementById('documentDeleteBtn'),
         centerColumn: document.querySelector('.center-column'),
         tagBar: document.getElementById('tagBar'),
         rightPanelTitle: document.getElementById('rightPanelTitle'),

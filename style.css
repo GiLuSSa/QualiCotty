@@ -398,6 +398,10 @@ body {
     gap: 8px;
 }
 
+.document-delete-btn {
+    margin-left: auto;
+}
+
 .preview-title {
     border-top: 1px solid #2f2f2f;
     margin-top: 4px;

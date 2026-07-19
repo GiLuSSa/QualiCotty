@@ -46,20 +46,25 @@
         const project = options.project || {};
 
         // Key order matters for readability: saves is last.
+        const documents = Array.isArray(options.documents) ? options.documents : [];
+        if (global.QualiCottyDocuments && typeof global.QualiCottyDocuments.normalizeDocuments === 'function') {
+            global.QualiCottyDocuments.normalizeDocuments(documents);
+        }
+
         const payload = {
             project: {
                 timestamp: project.timestamp || newSaveTimestamp(),
                 name: project.name || 'Untitled project',
                 description: project.description || '',
                 userName: project.userName || '',
-                version: project.version || QUALICOTTY_VERSION
+                QualiCottyVersion: project.QualiCottyVersion || project.version || QUALICOTTY_VERSION
             },
             codebook: {
                 name: (options.codebook && options.codebook.name) || 'Untitled codebook',
                 description: (options.codebook && options.codebook.description) || '',
                 codes: (options.codebook && options.codebook.codes) || []
             },
-            documents: Array.isArray(options.documents) ? options.documents : [],
+            documents: documents,
             segments: Array.isArray(options.segments) ? options.segments : [],
             saves: saves
         };
@@ -99,14 +104,14 @@
                 name: projectSrc.name || 'Untitled project',
                 description: projectSrc.description || '',
                 userName: projectSrc.userName || '',
-                version: projectSrc.version || QUALICOTTY_VERSION
+                QualiCottyVersion: projectSrc.QualiCottyVersion || projectSrc.version || QUALICOTTY_VERSION
             }
             : {
                 timestamp: projectTimestamp,
                 name: codebookSrc.project || 'Untitled project',
                 description: '',
                 userName: '',
-                version: QUALICOTTY_VERSION
+                QualiCottyVersion: QUALICOTTY_VERSION
             };
 
         const codebook = {

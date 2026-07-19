@@ -46,17 +46,21 @@
         return normalizeHex(colour);
     }
 
-    /** Ensure a document object has name, text, description, colour, and metadata fields. */
+    /** Ensure a document object has fields in canonical order for persistence/display. */
     function normalizeDocument(doc) {
         if (!doc || typeof doc !== 'object') return doc;
-        if (typeof doc.name !== 'string') doc.name = 'Untitled';
-        if (typeof doc.text !== 'string') doc.text = '';
-        if (typeof doc.description !== 'string') doc.description = '';
-        if (typeof doc.docType !== 'string') doc.docType = '';
-        if (typeof doc.persons !== 'string') doc.persons = '';
-        if (typeof doc.keywords !== 'string') doc.keywords = '';
-        doc.colour = normalizeHex(doc.colour || DEFAULT_DOCUMENT_COLOUR);
-        if (!doc.timestamp) doc.timestamp = newTimestamp();
+        const ordered = {
+            timestamp: doc.timestamp || newTimestamp(),
+            name: typeof doc.name === 'string' ? doc.name : 'Untitled',
+            docType: typeof doc.docType === 'string' ? doc.docType : '',
+            persons: typeof doc.persons === 'string' ? doc.persons : '',
+            description: typeof doc.description === 'string' ? doc.description : '',
+            keywords: typeof doc.keywords === 'string' ? doc.keywords : '',
+            text: typeof doc.text === 'string' ? doc.text : '',
+            colour: normalizeHex(doc.colour || DEFAULT_DOCUMENT_COLOUR)
+        };
+        Object.keys(doc).forEach(k => { delete doc[k]; });
+        Object.assign(doc, ordered);
         return doc;
     }
 
@@ -70,11 +74,11 @@
         constructor(name, text, description, colour) {
             this.timestamp = newTimestamp();
             this.name = name;
-            this.text = text;
-            this.description = typeof description === 'string' ? description : '';
             this.docType = '';
             this.persons = '';
+            this.description = typeof description === 'string' ? description : '';
             this.keywords = '';
+            this.text = text;
             this.colour = normalizeHex(colour || DEFAULT_DOCUMENT_COLOUR);
         }
     }
@@ -210,6 +214,42 @@
             if (els.documentModal) els.documentModal.classList.remove('visible');
         }
 
+        function deleteEditingDocument() {
+            const state = getState();
+            const els = getEls();
+            const doc = editingDocument;
+            if (!doc) return;
+
+            const name = (doc.name || 'Untitled').trim() || 'Untitled';
+            const segCount = state.segments.filter(s => s.documentTimestamp === doc.timestamp).length;
+            const msg = segCount === 0
+                ? 'Delete document “' + name + '”?\n\nThis cannot be undone.'
+                : 'Delete document “' + name + '” and its ' + segCount +
+                    ' segment' + (segCount === 1 ? '' : 's') + '?\n\nThis cannot be undone.';
+            if (!window.confirm(msg)) return;
+
+            const ts = doc.timestamp;
+            editingDocument = null;
+            if (els.documentModal) els.documentModal.classList.remove('visible');
+
+            state.documents = state.documents.filter(d => d.timestamp !== ts);
+            state.segments = state.segments.filter(s => s.documentTimestamp !== ts);
+
+            if (state.activeDocumentTimestamp === ts) {
+                state.activeDocumentTimestamp = state.documents.length
+                    ? state.documents[0].timestamp
+                    : null;
+            }
+
+            saveState();
+            if (typeof applyViewChange === 'function') {
+                applyViewChange(function () {});
+            } else {
+                renderDocumentList();
+                renderDocumentView();
+            }
+        }
+
         function setupDocumentModal() {
             const els = getEls();
             if (!els.documentModal) return;
@@ -265,6 +305,9 @@
                 saveState();
                 renderDocumentList();
             });
+            if (els.documentDeleteBtn) {
+                els.documentDeleteBtn.addEventListener('click', deleteEditingDocument);
+            }
 
             document.addEventListener('keydown', e => {
                 if (e.key === 'Escape' && els.documentModal.classList.contains('visible')) {

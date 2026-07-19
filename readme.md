@@ -158,7 +158,7 @@ Click **QualiCotty** in the ribbon for the in-app About panel; the cat icon is d
 ## Credits
 
 **Giulia Arena**  
-[giulia.arena@edu.unige.it](mailto:giulia.arena@edu.unige.it)
+[giulia.arena@cchs.csic.es](mailto:giulia.arena@cchs.csic.es)
 
 **Giulio Lucio Sergio Sacco** - GiLuSSa  
 [giulioluciosergio.sacco@edu.unige.it](mailto:giulioluciosergio.sacco@edu.unige.it)

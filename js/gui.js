@@ -729,7 +729,7 @@
                     name: state.codebook.project,
                     description: state.codebook.projectDescription,
                     userName: state.codebook.userName,
-                    version: state.codebook.version || qualicottyVersion
+                    QualiCottyVersion: state.codebook.version || qualicottyVersion
                 },
                 codebook: {
                     name: state.codebook.name || 'Untitled codebook',
@@ -779,7 +779,7 @@
                 project: snapshot.project.name,
                 projectDescription: snapshot.project.description,
                 userName: snapshot.project.userName,
-                version: snapshot.project.version || qualicottyVersion,
+                version: snapshot.project.QualiCottyVersion || snapshot.project.version || qualicottyVersion,
                 name: (snapshot.codebook && snapshot.codebook.name) || 'Untitled codebook',
                 description: (snapshot.codebook && snapshot.codebook.description) || '',
                 codes: snapshot.codebook.codes,
