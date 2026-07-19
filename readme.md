@@ -2,7 +2,7 @@
 
 **QualiCotty** is a lightweight qualitative content analysis (QCA) tool that runs entirely in the browser. It helps researchers import transcripts and texts, build a codebook, code passages, filter and query coded material, and export results — without a server, account, or network round-trip for analysis data.
 
-Current version: **0.02a**
+Current version: **0.03a**
 
 ---
 
